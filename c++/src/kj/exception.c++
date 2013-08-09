@@ -25,7 +25,14 @@
 #include "string.h"
 #include "debug.h"
 #include <unistd.h>
+
+#ifndef __CYGWIN__
 #include <execinfo.h>
+#define BACKTRACE(__trace__, __depth__) backtrace(__trace__, __depth__)
+#else
+#define BACKTRACE(__trace__, __depth__) 0
+#endif
+
 #include <stdlib.h>
 #include <exception>
 
@@ -173,7 +180,7 @@ Exception::Exception(Nature nature, Durability durability, const char* file, int
                      String description) noexcept
     : file(file), line(line), nature(nature), durability(durability),
       description(mv(description)) {
-  traceCount = backtrace(trace, 16);
+  traceCount = BACKTRACE(trace, 16);
 }
 
 Exception::Exception(const Exception& other) noexcept
@@ -339,7 +346,8 @@ private:
     getExceptionCallback().logMessage(e.getFile(), e.getLine(), 0, str(
         e.getNature(), e.getDurability() == Exception::Durability::TEMPORARY ? " (temporary)" : "",
         e.getDescription() == nullptr ? "" : ": ", e.getDescription(),
-        "\nstack: ", strArray(e.getStackTrace(), " "), "\n"));
+        e.getStackTrace().size() == 0 ? "" : "\nstack: ",
+        strArray(e.getStackTrace(), " "), "\n"));
   }
 };
 
